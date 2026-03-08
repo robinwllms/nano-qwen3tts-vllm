@@ -257,7 +257,8 @@ class ModelRunner:
             graph_vars["slot_mapping"][:bs] = context.slot_mapping
             graph_vars["context_lens"].zero_()
             graph_vars["context_lens"][:bs] = context.context_lens
-            graph_vars["block_tables"][:bs, :context.block_tables.size(1)] = context.block_tables
+            bt_cols = min(context.block_tables.size(1), graph_vars["block_tables"].size(1))
+            graph_vars["block_tables"][:bs, :bt_cols] = context.block_tables[:, :bt_cols]
             graph.replay()
             return self.model.compute_logits(graph_vars["outputs"][:bs])
 
