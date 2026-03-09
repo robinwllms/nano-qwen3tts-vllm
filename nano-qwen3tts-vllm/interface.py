@@ -857,6 +857,7 @@ class Qwen3TTSInterface:
         x_vector_only_mode: bool = False,
         voice_clone_prompt: Optional[Dict[str, Any]] = None,
         non_streaming_mode: bool = True,
+        temperature: float = 1.0,
     ):
         """Async generator of codebook_id chunks for voice clone. Call await start_zmq_tasks() first.
 
@@ -1006,10 +1007,11 @@ class Qwen3TTSInterface:
         )
         
         async for chunk in self.generate_async(
-            talker_input_embeds, trailing_text_hiddens, tts_pad_embed, talker_attention_mask
+            talker_input_embeds, trailing_text_hiddens, tts_pad_embed, talker_attention_mask,
+            temperature=temperature,
         ):
             yield chunk
-    
+
     def generate_voice_design(
         self,
         text: str,
@@ -1143,7 +1145,8 @@ class Qwen3TTSInterface:
         )
 
     async def generate_custom_voice_async(
-        self, text: str, language: str = "English", speaker: str = "Vivian"
+        self, text: str, language: str = "English", speaker: str = "Vivian",
+        temperature: float = 1.0,
     ):
         """Async generator of codebook_id chunks. Call await start_zmq_tasks() first."""
         if not (self._use_mp_engines and self._mp_holder is not None):
@@ -1166,7 +1169,8 @@ class Qwen3TTSInterface:
         # Run prep directly – tiny GPU kernels, no benefit from threading.
         talker_input_embeds, trailing_text_hiddens, tts_pad_embed, talker_attention_mask = _do_prep()
         async for chunk in self.generate_async(
-            talker_input_embeds, trailing_text_hiddens, tts_pad_embed, talker_attention_mask
+            talker_input_embeds, trailing_text_hiddens, tts_pad_embed, talker_attention_mask,
+            temperature=temperature,
         ):
             yield chunk
 
@@ -1188,12 +1192,13 @@ class Qwen3TTSInterface:
         tts_pad_embed: torch.Tensor,
         talker_attention_mask: torch.Tensor,
         request_id: str | None = None,
+        temperature: float = 1.0,
     ):
         """Async generator of codebook_id chunks. Call await start_zmq_tasks() first."""
         if not (self._use_mp_engines and self._mp_holder is not None):
             raise RuntimeError("generate_async requires start_zmq_tasks() to be called first")
-        talker_sampling_params = SamplingParams(temperature=1.0, max_tokens=1)
-        predictor_sampling_params = SamplingParams(temperature=0.9, max_tokens=17)
+        talker_sampling_params = SamplingParams(temperature=temperature, max_tokens=1)
+        predictor_sampling_params = SamplingParams(temperature=max(0.1, temperature - 0.1), max_tokens=17)
         request_id = request_id or str(uuid.uuid4())
         request_queue: asyncio.Queue = asyncio.Queue()
         async with self._queues_lock:
