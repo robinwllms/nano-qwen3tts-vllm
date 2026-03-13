@@ -1146,7 +1146,7 @@ class Qwen3TTSInterface:
 
     async def generate_custom_voice_async(
         self, text: str, language: str = "English", speaker: str = "Vivian",
-        temperature: float = 1.0,
+        temperature: float = 1.0, instruct: str = "",
     ):
         """Async generator of codebook_id chunks. Call await start_zmq_tasks() first."""
         if not (self._use_mp_engines and self._mp_holder is not None):
@@ -1156,6 +1156,7 @@ class Qwen3TTSInterface:
             """CPU/GPU prep work (run inside executor)."""
             input_ids, instruct_ids, speakers, languages = prepare_custom_voice_prompt(
                 text=text, language=language, speaker=speaker,
+                instruct=instruct if instruct else None,
                 processor=self.processor, device=self.device,
             )
             return prepare_inputs(
